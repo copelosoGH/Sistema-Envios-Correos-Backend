@@ -1,84 +1,54 @@
-import { getArticulosConEmail, registrarLogEnvio } from "../services/articuloService.js";
-import { enviarArticulosPorMail } from "../services/emailService.js";
+// src/controllers/emailController.js  (sin el log, por ahora)
+import { getPlantilla } from '../services/plantillaService.js';
+import { construirContexto, render } from '../services/renderService.js';
+import { enviarCorreo } from '../services/emailService.js';
 
-export const enviarArticulos = async (req, res) => {
-    console.log(req.body);
+export const enviarCorreoDinamico = async (req, res) => {
+    // Claves de control (las que el motor maneja aparte)
+    const { idModelo, enviarCasa, emailSucursal, enviarMail, mail, ...resto } = req.body;
+
+    // Todo lo demás que mande VB6 (idPedido, etc.) se vuelve params
+    const params = resto;
     
-    const { idPedido, enviarCasa, emailSucursal, enviarMail, mail } = req.body;
     const MAX_INTENTOS = 3;
 
     try {
-        if (!idPedido) {
-            return res.status(400).json({ error: "Falta el idPedido." });
-        }
+        if (!idModelo) return res.status(400).json({ error: "Falta el idModelo." });
 
-        const listaArticulos = await getArticulosConEmail(idPedido);
+        const plantilla = await getPlantilla(idModelo);
+        if (!plantilla) return res.status(404).json({ error: `No existe la plantilla ${idModelo}.` });
 
-        if (listaArticulos.length === 0) {
-            return res.status(404).json({
-                error: `No se encontraron artículos para el pedido ${idPedido}.`
-            });
-        }
+        const contexto = await construirContexto(idModelo, params);
+        console.log("PARAMS:", params);
+console.log("CONTEXTO:", JSON.stringify(contexto, null, 2));
 
-        const nombreCasa = listaArticulos[0].NombreCasa || "Destino";
+        const asunto = render(plantilla.ASUNTO, contexto);
+        const html   = render(plantilla.CUERPO, contexto);
 
-        // ARMAR DESTINOS
         let destinos = [];
-
-        if (enviarCasa === true && emailSucursal && emailSucursal.trim() !== "") {
-            destinos.push(emailSucursal.trim());
-        }
-
-        // "mail" en minúscula
-        if (enviarMail === true && mail && mail.trim() !== "") {
-            destinos.push(mail.trim());
-        }
-
+        if (enviarCasa === true && emailSucursal?.trim()) destinos.push(emailSucursal.trim());
+        if (enviarMail === true && mail?.trim())          destinos.push(mail.trim());
         destinos = [...new Set(destinos)];
 
-        if (destinos.length === 0) {
-            return res.status(400).json({ error: "No hay email destino válido." });
-        }
-
+        if (destinos.length === 0) return res.status(400).json({ error: "No hay email destino válido." });
         const emailDestino = destinos.join(",");
 
-        console.log(
-            `Pedido ${idPedido} → ${nombreCasa} | Envio de mail a: ${emailDestino} | ${new Date().toLocaleString()}`
-        );
-
-        let enviado       = false;
-        let intentoActual = 0;
-
+        let enviado = false, intentoActual = 0;
         while (intentoActual < MAX_INTENTOS && !enviado) {
             intentoActual++;
             try {
-                await enviarArticulosPorMail(emailDestino, listaArticulos, idPedido, nombreCasa);
+                await enviarCorreo(emailDestino, asunto, html);
                 enviado = true;
+                console.log(`Correo enviado a ${emailDestino} con asunto "${asunto}".`);
                 console.log(`Correo enviado en intento ${intentoActual}`);
             } catch (error) {
                 console.error(`Fallo intento ${intentoActual} de ${MAX_INTENTOS}`);
-                if (intentoActual < MAX_INTENTOS) {
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                }
+                if (intentoActual < MAX_INTENTOS) await new Promise(r => setTimeout(r, 2000));
             }
         }
 
-        await registrarLogEnvio(
-            idPedido,
-            emailDestino,
-            enviado ? "SUCCESS" : "FAILED_FINAL",
-            intentoActual,
-            "Deposito",
-            listaArticulos.length
-        );
-
-        if (enviado) {
-            res.json({
-                message: `Correo enviado a ${nombreCasa} (${emailDestino}). ${listaArticulos.length} artículo(s).`
-            });
-        } else {
-            res.status(500).json({ error: "No se pudo enviar el correo tras 3 intentos." });
-        }
+        if (enviado) res.json({ message: `Correo enviado a ${emailDestino}.` });
+        else res.status(500).json({ error: "No se pudo enviar tras 3 intentos." });
 
     } catch (error) {
         console.error("DETALLE DEL ERROR:", error.message);

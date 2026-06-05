@@ -2,3 +2,4 @@ node_modules
 
 # ARCHIVOS
 .env
+test.http
