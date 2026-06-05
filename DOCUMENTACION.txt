@@ -1,0 +1,10 @@
+Se desarrolló un sistema de envío automático de correos electrónicos integrado
+entre una aplicación de escritorio en Visual Basic 6.0 (Seccion de archivos/movimientos de mercaderias/sugerido distribucion)
+boton "Enviar Mail" y un servidor backend en Node.js (C:\Aplicaciones\WebServices\GESTCOM-ENVIO-MAIL).
+El sistema permite seleccionar reservas desde una grilla de datos,
+elegir el destino del envío (correo de la casa, correo manual o ambos) y enviar
+automáticamente un detalle de artículos mediante una API HTTP. 
+La solución utiliza SQL Server como fuente de datos y Nodemailer para la generación y
+envío de correos en formato HTML.
+
+Los datos del correo son del donweb / envialosimple. cuenta de Lucas

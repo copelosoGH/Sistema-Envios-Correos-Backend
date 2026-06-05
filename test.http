@@ -1,0 +1,6 @@
+POST http://localhost:7013/api/enviarArticulos
+Content-Type: application/json
+
+{
+    "idReserva": 2186
+}
