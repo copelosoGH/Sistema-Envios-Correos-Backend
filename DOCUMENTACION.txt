@@ -1,10 +1,57 @@
-Se desarrolló un sistema de envío automático de correos electrónicos integrado
-entre una aplicación de escritorio en Visual Basic 6.0 (Seccion de archivos/movimientos de mercaderias/sugerido distribucion)
-boton "Enviar Mail" y un servidor backend en Node.js (C:\Aplicaciones\WebServices\GESTCOM-ENVIO-MAIL).
-El sistema permite seleccionar reservas desde una grilla de datos,
-elegir el destino del envío (correo de la casa, correo manual o ambos) y enviar
-automáticamente un detalle de artículos mediante una API HTTP. 
-La solución utiliza SQL Server como fuente de datos y Nodemailer para la generación y
-envío de correos en formato HTML.
+GESTCOM-ENVIO-MAIL — Documentación
+¿Qué es?
+Backend desarrollado en Node.js/Express que actúa como motor de envío de correos electrónicos 
+para el sistema de gestión Gestcom de A Todo Color. 
+Permite que distintos sistemas internos (VB6, C#, u otros) disparen correos HTML dinámicos 
+con una simple llamada HTTP, sin necesidad de conocer los detalles del diseño ni del envío.
+
+
+¿Cómo funciona?
+El sistema recibe una petición POST con dos tipos de datos: los datos de control 
+(qué plantilla usar, a quién enviar) y los datos variables del correo (nombre del cliente, estado, artículos, etc.).
+
+
+Con esa información, el motor:
+Busca en la base de datos la plantilla correspondiente (asunto + cuerpo HTML).
+Si la plantilla requiere consultar datos adicionales (como la lista de artículos de un pedido), 
+ejecuta las funciones registradas para ese modelo y los obtiene de SQL Server.
+Si se indica un número de sucursal (casa), consulta la tabla CASAS para resolver el email destinatario 
+y el nombre de la sucursal automáticamente.
+Combina los datos con la plantilla usando el motor de plantillas Handlebars, 
+que reemplaza las variables {{variable}} por sus valores reales.
+Envía el correo resultante vía Nodemailer (SMTP EnvíoSimple), 
+con reintentos automáticos ante fallos.
+
+
+Tecnologías
+Node.js / Express — servidor HTTP
+Handlebars — motor de plantillas para armar el HTML dinámico
+Nodemailer — envío de correos vía SMTP (EnvíoSimple)
+mssql — conexión a SQL Server (base Casa09)
+
+
+
+Estructura de la base de datos (esquema Mail)
+Tabla PLANTILLA: Almacena el asunto, cuerpo HTML (con variables Handlebars) 
+y el emisor de cada tipo de correo
+FUNCION: Catálogo de funciones que pueden consultarse 
+en la base para armar el cuerpo del correoMODELO_FUNCIONRelación entre plantillas y funciones 
+(una plantilla puede usar varias funciones)
+FUNCION_PARAMETROParámetros que necesita cada función para ejecutarse
+
+
+Cómo se llama al sistema
+Todos los correos se envían con una sola petición:
+POST http://servidor:puerto/api/enviarCorreo
+Content-Type: application/json
+
+El cuerpo siempre incluye idModelo (qué plantilla usar) y los datos necesarios para armarla. 
+El destinatario se puede resolver automáticamente por número de sucursal (casa) o 
+indicarse manualmente (mail). Ambas opciones pueden combinarse para enviar a múltiples destinos.
+
+
+Agregar un nuevo tipo de correo
+Si los datos ya vienen en la petición (como la plantilla 6): solo se inserta un nuevo registro en Mail.PLANTILLA. Sin tocar el código.
+Si hay que consultar la base (como la plantilla 1): se escribe una función en Node, se registra en el archivo registry.js (whitelist de seguridad), se declara en Mail.FUNCION y se asocia a la plantilla en Mail.MODELO_FUNCION.
 
 Los datos del correo son del donweb / envialosimple. cuenta de Lucas
