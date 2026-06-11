@@ -1,4 +1,3 @@
-// src/services/renderService.js
 import Handlebars from 'handlebars';
 import { getFuncionesDeModelo } from './plantillaService.js';
 import { obtenerFuncion } from './registry.js';

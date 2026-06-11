@@ -8,7 +8,7 @@ export const getPlantilla = async (idModelo) => {
     const result = await pool.request()
         .input('id', sql.Int, idModelo)
         .query(`
-            SELECT ID, NOMBRE, ASUNTO, CUERPO
+            SELECT ID, NOMBRE, ASUNTO, CUERPO, EMAIL_FROM, NOMBRE_FROM
             FROM Mail.PLANTILLA
             WHERE ID = @id AND ACTIVO = 1
         `);
@@ -22,10 +22,10 @@ export const getFuncionesDeModelo = async (idModelo) => {
         .input('id', sql.Int, idModelo)
         .query(`
             SELECT F.NOMBRE, F.DEVUELVE, F.CLAVE_CONTEXTO
-            FROM Mail.MODELO_FUNCION MF
-            INNER JOIN Mail.FUNCION F ON F.ID = MF.ID_FUNCION
-            WHERE MF.ID_PLANTILLA = @id
-            ORDER BY MF.ORDEN
+            FROM Mail.PLANTILLA_FUNCION PF
+            INNER JOIN Mail.FUNCION F ON F.ID = PF.ID_FUNCION
+            WHERE PF.ID_PLANTILLA = @id
+            ORDER BY PF.ORDEN
         `);
     return result.recordset;
 };
